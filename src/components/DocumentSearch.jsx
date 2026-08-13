@@ -2,9 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Search, X } from 'lucide-react'
 import { clearSearchHighlights, searchDocument } from '../utils/search.js'
+import { restoreFocus, trapFocus } from '../utils/focus.js'
 
 function DocumentSearch({ documentRef, documentKey }) {
   const inputRef = useRef(null)
+  const panelRef = useRef(null)
+  const triggerRef = useRef(null)
+  const previousFocusRef = useRef(null)
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -20,7 +24,7 @@ function DocumentSearch({ documentRef, documentKey }) {
     const top = result.element.getBoundingClientRect().top + window.scrollY - headerHeight - 28
     window.scrollTo({ top: Math.max(0, top), behavior: 'auto' })
     setActiveIndex(nextIndex)
-    if (closePanel) setIsOpen(false)
+    if (closePanel) closeSearch()
   }
 
   const runSearch = (value) => {
@@ -38,6 +42,16 @@ function DocumentSearch({ documentRef, documentKey }) {
     setIsOpen(false)
   }
 
+  const openSearch = (event) => {
+    previousFocusRef.current = event?.currentTarget || document.activeElement
+    setIsOpen(true)
+  }
+
+  const closeSearch = () => {
+    setIsOpen(false)
+    restoreFocus(previousFocusRef.current || triggerRef.current)
+  }
+
   useEffect(() => {
     clearSearch()
   }, [documentKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -52,7 +66,7 @@ function DocumentSearch({ documentRef, documentKey }) {
     const openWithShortcut = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        setIsOpen(true)
+        openSearch()
       }
     }
     window.addEventListener('keydown', openWithShortcut)
@@ -60,7 +74,8 @@ function DocumentSearch({ documentRef, documentKey }) {
   }, [])
 
   const handleKeys = (event) => {
-    if (event.key === 'Escape') setIsOpen(false)
+    trapFocus(event, panelRef.current)
+    if (event.key === 'Escape') closeSearch()
     if (event.key === 'ArrowDown') { event.preventDefault(); activateResult(activeIndex + 1) }
     if (event.key === 'ArrowUp') { event.preventDefault(); activateResult(activeIndex - 1) }
     if (event.key === 'Enter' && results.length) { event.preventDefault(); activateResult(activeIndex < 0 ? 0 : activeIndex, true) }
@@ -69,7 +84,7 @@ function DocumentSearch({ documentRef, documentKey }) {
   return (
     <>
       <div className={`header-search ${query ? 'header-search--active' : ''}`}>
-        <button type="button" className="search-trigger" onClick={() => setIsOpen(true)} aria-label="Search document">
+        <button ref={triggerRef} type="button" className="search-trigger" onClick={openSearch} aria-label="Search document">
           <Search size={14} />
           <span>{query || 'Search...'}</span>
           {!query && <kbd>⌘K</kbd>}
@@ -85,8 +100,8 @@ function DocumentSearch({ documentRef, documentKey }) {
       </div>
 
       {isOpen && createPortal(
-        <div className="search-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsOpen(false) }}>
-          <section className="search-panel" role="dialog" aria-modal="true" aria-label="Search document" onKeyDown={handleKeys}>
+        <div className="search-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSearch() }}>
+          <section ref={panelRef} className="search-panel" role="dialog" aria-modal="true" aria-label="Search document" onKeyDown={handleKeys}>
             <div className="search-panel-header">
               <Search size={19} />
               <input ref={inputRef} value={query} onChange={(event) => runSearch(event.target.value)} placeholder="Search document..." aria-label="Search query" />

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, MoonStar, Upload, X } from 'lucide-react'
+import { restoreFocus, trapFocus } from '../utils/focus.js'
 
 function withoutNumberPrefix(text) {
   return text.replace(/^\d+(?:\.\d+)*\.?\s+/, '')
@@ -48,6 +49,9 @@ function TableOfContents({ headings }) {
   const [activeMainId, setActiveMainId] = useState(mainHeadings[0]?.id)
   const [activeId, setActiveId] = useState(mainHeadings[0]?.id)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
+  const drawerRef = useRef(null)
+  const menuTriggerRef = useRef(null)
 
   useEffect(() => {
     setActiveMainId(mainHeadings[0]?.id)
@@ -55,17 +59,30 @@ function TableOfContents({ headings }) {
   }, [mainHeadings])
 
   useEffect(() => {
-    const toggle = () => setMobileOpen((open) => !open)
+    const toggle = (event) => setMobileOpen((open) => {
+      if (!open) menuTriggerRef.current = event.detail?.trigger || document.activeElement
+      else restoreFocus(menuTriggerRef.current)
+      return !open
+    })
     window.addEventListener('markview:toggle-navigation', toggle)
     return () => window.removeEventListener('markview:toggle-navigation', toggle)
   }, [])
 
   useEffect(() => {
     if (!mobileOpen) return undefined
-    const close = (event) => { if (event.key === 'Escape') setMobileOpen(false) }
-    window.addEventListener('keydown', close)
-    return () => window.removeEventListener('keydown', close)
+    window.setTimeout(() => drawerRef.current?.querySelector('button')?.focus(), 0)
+    const handleKeyDown = (event) => {
+      trapFocus(event, drawerRef.current)
+      if (event.key === 'Escape') closeMobileMenu()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [mobileOpen])
+
+  const closeMobileMenu = (shouldRestoreFocus = true) => {
+    setMobileOpen(false)
+    if (shouldRestoreFocus) restoreFocus(menuTriggerRef.current)
+  }
 
   const activeMainIndex = Math.max(0, mainHeadings.findIndex((heading) => heading.id === activeMainId))
   const activeMain = mainHeadings[activeMainIndex] || mainHeadings[0] || { id: '', text: 'document', children: [] }
@@ -83,8 +100,8 @@ function TableOfContents({ headings }) {
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'auto' })
     target.focus({ preventScroll: true })
     window.history.replaceState(null, '', `#${encodeURIComponent(heading.id)}`)
-    event.currentTarget.closest('details')?.removeAttribute('open')
-    setMobileOpen(false)
+    setAnnouncement(`Jumped to ${withoutNumberPrefix(heading.text)}`)
+    closeMobileMenu(false)
   }
 
   return (
@@ -119,12 +136,12 @@ function TableOfContents({ headings }) {
 
       {mobileOpen && <div
         className="mobile-nav-overlay mobile-nav-overlay--open"
-        onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileOpen(false) }}
+        onMouseDown={(event) => { if (event.target === event.currentTarget) closeMobileMenu() }}
       >
-        <aside className="mobile-nav-drawer" aria-label="Document menu">
+        <aside ref={drawerRef} className="mobile-nav-drawer" aria-label="Document menu">
           <div className="mobile-nav-header">
             <strong>Document menu</strong>
-            <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close document menu"><X size={18} /></button>
+            <button type="button" onClick={() => closeMobileMenu()} aria-label="Close document menu"><X size={18} /></button>
           </div>
           <div className="mobile-nav-actions" aria-label="Document actions">
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('markview:copy-document'))}>
@@ -150,6 +167,7 @@ function TableOfContents({ headings }) {
           </nav>
         </aside>
       </div>}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
     </>
   )
 }

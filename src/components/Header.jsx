@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Check, Copy, FileText, Menu, Moon, Sun, Upload } from 'lucide-react'
-import DocumentSearch from './DocumentSearch.jsx'
+
+const DocumentSearch = lazy(() => import('./DocumentSearch.jsx'))
 
 function Header({ document, documentRef, copied, onCopy, onUpload }) {
   const [theme, setTheme] = useState(() => {
@@ -38,14 +39,16 @@ function Header({ document, documentRef, copied, onCopy, onUpload }) {
 
       {document && (
         <>
-          <div className="file-info" title={document.name}>
+          <div className="file-info" title={document.title || document.name}>
             <FileText size={15} aria-hidden="true" />
-            <span>{document.name}</span>
+            <span>{document.title || document.name}</span>
             <span className="read-only">Read-Only</span>
           </div>
 
           <div className="header-actions">
-            <DocumentSearch key={document.key} documentRef={documentRef} documentKey={document.key} />
+            <Suspense fallback={<span className="header-search header-search--loading" aria-hidden="true" />}>
+              <DocumentSearch key={document.key} documentRef={documentRef} documentKey={document.key} />
+            </Suspense>
             <button className="button button--quiet copy-button" type="button" onClick={onCopy} aria-label={copied ? 'Document copied' : 'Copy document'}>
               {copied ? <Check size={14} /> : <Copy size={14} />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -67,7 +70,9 @@ function Header({ document, documentRef, copied, onCopy, onUpload }) {
           <button
             className="mobile-nav-toggle"
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('markview:toggle-navigation'))}
+            onClick={(event) => window.dispatchEvent(new CustomEvent('markview:toggle-navigation', {
+              detail: { trigger: event.currentTarget },
+            }))}
             aria-label="Open document menu"
           >
             <Menu size={18} />

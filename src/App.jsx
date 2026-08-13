@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import EmptyState from './components/EmptyState.jsx'
 import ErrorState from './components/ErrorState.jsx'
 import DocumentViewer from './components/DocumentViewer.jsx'
+import RenderErrorBoundary from './components/RenderErrorBoundary.jsx'
 import { copyMarkdownDocument } from './utils/clipboard.js'
 import { readMarkdownFile } from './utils/file.js'
 import { clearSearchHighlights } from './utils/search.js'
@@ -104,7 +105,9 @@ function App() {
         {state === 'error' && <ErrorState message={error} onUpload={openFilePicker} />}
 
         {state === 'viewer' && (
-          <DocumentViewer key={document.key} ref={documentRef} content={document.content} />
+          <RenderErrorBoundary key={document.key} onReset={openFilePicker}>
+            <DocumentViewer ref={documentRef} content={document.content} />
+          </RenderErrorBoundary>
         )}
       </main>
 

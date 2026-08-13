@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readMarkdownFile } from '../utils/file.js'
+import { extractFrontmatter, readMarkdownFile } from '../utils/file.js'
 
 function readableFile(parts, name, options) {
   const file = new File(parts, name, options)
@@ -14,6 +14,7 @@ describe('readMarkdownFile', () => {
     await expect(readMarkdownFile(file)).resolves.toEqual({
       name: 'guide.md',
       content: '# Hello\nComplete document',
+      title: '',
     })
   })
 
@@ -37,5 +38,20 @@ describe('readMarkdownFile', () => {
     file.text = async () => { throw new Error('read failed') }
 
     await expect(readMarkdownFile(file)).rejects.toThrow(/could not read/)
+  })
+
+  it('strips YAML frontmatter and returns its title', async () => {
+    const file = readableFile(['---\ntitle: "API Guide"\nauthor: Team\n---\n# Introduction'], 'guide.md')
+
+    await expect(readMarkdownFile(file)).resolves.toEqual({
+      name: 'guide.md',
+      title: 'API Guide',
+      content: '# Introduction',
+    })
+  })
+
+  it('leaves incomplete frontmatter readable instead of discarding content', () => {
+    const markdown = '---\ntitle: Unclosed\n# Still readable'
+    expect(extractFrontmatter(markdown)).toEqual({ content: markdown, title: '' })
   })
 })

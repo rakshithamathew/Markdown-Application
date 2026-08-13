@@ -59,4 +59,22 @@ describe('copyMarkdownDocument', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('# Title')
   })
+
+  it('preserves semantic tables and nested lists in rich clipboard HTML', async () => {
+    await copyMarkdownDocument({
+      markdown: '| Name | Status |\n| --- | --- |\n| API | Ready |\n\n1. Root\n   - Child',
+      html: '<table><thead><tr><th>Name</th><th>Status</th></tr></thead><tbody><tr><td>API</td><td>Ready</td></tr></tbody></table><ol><li>Root<ul><li>Child</li></ul></li></ol><pre><code>const ready = true</code></pre>',
+      plainText: 'Name Status API Ready Root Child',
+    })
+
+    const item = write.mock.calls[0][0][0]
+    const richHtml = await readBlob(item.data['text/html'])
+    const parsed = new DOMParser().parseFromString(richHtml, 'text/html')
+
+    expect(parsed.querySelectorAll('table thead tr th')).toHaveLength(2)
+    expect(parsed.querySelectorAll('table tbody tr td')).toHaveLength(2)
+    expect(parsed.querySelector('ol > li > ul > li')?.textContent).toBe('Child')
+    expect(parsed.querySelector('table')?.getAttribute('style')).toContain('border-collapse')
+    expect(parsed.querySelector('td')?.getAttribute('style')).toContain('border:1px')
+  })
 })

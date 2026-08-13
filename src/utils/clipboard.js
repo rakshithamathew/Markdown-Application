@@ -7,12 +7,18 @@ const INLINE_STYLES = {
   PRE: 'margin:16px 0;padding:16px 18px;background:#12141a;color:#e3e5eb;border-radius:6px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:12px;',
   CODE: 'font-family:Consolas,monospace;background:#f1f0ff;color:#5145d7;padding:2px 4px;border-radius:3px;',
   TABLE: 'width:100%;border-collapse:collapse;margin:16px 0;',
+  THEAD: 'display:table-header-group;',
+  TBODY: 'display:table-row-group;',
+  TR: 'display:table-row;',
   TH: 'border:1px solid #dfe1e6;background:#f5f5f7;padding:8px 10px;text-align:left;color:#252831;font-weight:700;',
   TD: 'border:1px solid #dfe1e6;padding:8px 10px;text-align:left;',
   A: 'color:#5145d7;text-decoration:underline;',
   UL: 'margin:0 0 14px;padding-left:24px;',
   OL: 'margin:0 0 14px;padding-left:24px;',
   LI: 'margin:4px 0;',
+  STRONG: 'font-weight:700;color:#252831;',
+  EM: 'font-style:italic;',
+  DEL: 'text-decoration:line-through;',
 }
 
 function createRichHtml(html) {

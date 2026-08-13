@@ -32,6 +32,17 @@ describe('file handling UI', () => {
     expect(screen.getByRole('button', { name: 'Upload another file' })).toBeInTheDocument()
   })
 
+  it('shows a frontmatter title in the header without rendering the YAML block', async () => {
+    const { container } = render(<App />)
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [readableFile('---\ntitle: Platform Guide\nowner: Docs\n---\n# Welcome', 'guide.md')] },
+    })
+
+    expect(await screen.findByText('Platform Guide')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument()
+    expect(screen.queryByText('owner: Docs')).not.toBeInTheDocument()
+  })
+
   it('shows a clear error for invalid input', async () => {
     const { container } = render(<App />)
     const input = container.querySelector('input[type="file"]')
@@ -62,7 +73,7 @@ describe('file handling UI', () => {
     })
 
     expect(await screen.findByRole('button', { name: 'Open document menu' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Search document' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Search document' })).toBeInTheDocument()
     expect(screen.getByText('mobile.md')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open document menu' }))
@@ -80,13 +91,15 @@ describe('file handling UI', () => {
     })
     await screen.findByRole('heading', { name: 'Guide' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open document menu' }))
+    const menuTrigger = screen.getByRole('button', { name: 'Open document menu' })
+    fireEvent.click(menuTrigger)
     const menu = screen.getByRole('complementary', { name: 'Document menu' })
     expect(menu).toBeInTheDocument()
     expect(within(menu).getByRole('link', { name: '1.1 Requirements' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close document menu' }))
     expect(screen.queryByRole('complementary', { name: 'Document menu' })).not.toBeInTheDocument()
+    await waitFor(() => expect(menuTrigger).toHaveFocus())
   })
 
   it('keeps mobile document actions available when the Markdown has no headings', async () => {
@@ -109,11 +122,15 @@ describe('file handling UI', () => {
     })
     await screen.findByRole('heading', { name: 'Search Guide' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search document' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Search document' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Search query' }), { target: { value: 'redis' } })
 
     expect(screen.getByText('2 results')).toBeInTheDocument()
     expect(container.querySelectorAll('mark[data-search-match]')).toHaveLength(2)
+
+    const dialog = screen.getByRole('dialog', { name: 'Search document' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Search document' })).toHaveFocus())
   })
 
   it('replaces the current document when Upload new selects another file', async () => {
@@ -122,7 +139,7 @@ describe('file handling UI', () => {
     fireEvent.change(input, { target: { files: [readableFile('# First document\n\nFirst content', 'first.md')] } })
     expect(await screen.findByRole('heading', { name: 'First document' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search document' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Search document' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Search query' }), { target: { value: 'first' } })
     expect(container.querySelector('mark[data-search-match]')).toBeInTheDocument()
 

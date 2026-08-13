@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import DocumentViewer from '../components/DocumentViewer.jsx'
 import sampleMarkdown from './fixtures/sample.md?raw'
+import unclosedFence from './fixtures/malformed/unclosed-code-fence.md?raw'
+import mismatchedEmphasis from './fixtures/malformed/mismatched-emphasis.md?raw'
+import unbalancedTable from './fixtures/malformed/unbalanced-table.md?raw'
+import deepMixedLists from './fixtures/malformed/deep-mixed-lists.md?raw'
+import unicodeHeadings from './fixtures/malformed/unicode-headings.md?raw'
 
 describe('DocumentViewer', () => {
   it('renders the representative GFM document', () => {
@@ -35,17 +40,24 @@ describe('DocumentViewer', () => {
     expect(await screen.findByRole('button', { name: 'Code copied' })).toBeInTheDocument()
   })
 
+  it('loads an uncommon syntax grammar only when its code block is rendered', async () => {
+    const { container } = render(<DocumentViewer content={'```ruby\ndef greet\n  puts "hello"\nend\n```'} />)
+
+    await waitFor(() => expect(container.querySelector('code.language-ruby .hljs-keyword')).toBeInTheDocument())
+  })
+
   it('scrolls and focuses the selected table-of-contents section', () => {
     const scrollTo = vi.fn()
     window.scrollTo = scrollTo
     render(<DocumentViewer content={'# Module\n\n## Submodule\n\nContent'} />)
 
-    screen.getAllByRole('link', { name: '1. Submodule' })[0].click()
+    fireEvent.click(screen.getAllByRole('link', { name: '1. Submodule' })[0])
 
     const section = screen.getByRole('heading', { name: 'Submodule' })
     expect(scrollTo).toHaveBeenCalledTimes(1)
     expect(section).toHaveFocus()
     expect(window.location.hash).toBe('#submodule')
+    expect(screen.getByRole('status')).toHaveTextContent('Jumped to Submodule')
   })
 
   it('navigates nested submodules at every heading depth', () => {
@@ -124,6 +136,42 @@ describe('DocumentViewer', () => {
     expect(screen.getByRole('heading', { name: 'Incomplete' })).toBeInTheDocument()
     expect(screen.getByText(/unclosed emphasis/)).toBeInTheDocument()
     expect(container.querySelector('pre code')).toHaveTextContent('const value = {')
+  })
+
+  it.each([
+    ['unclosed code fence', unclosedFence, 'Unclosed Fence'],
+    ['mismatched emphasis', mismatchedEmphasis, 'Emphasis Recovery'],
+    ['unbalanced table', unbalancedTable, 'Irregular Table'],
+    ['deep mixed lists', deepMixedLists, 'Mixed Lists'],
+    ['Unicode headings', unicodeHeadings, '🌍 Café 指南'],
+  ])('renders the %s fixture without crashing', (_case, markdown, heading) => {
+    render(<DocumentViewer content={markdown} />)
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
+  })
+
+  it('preserves readable structures in malformed fixtures', () => {
+    const { container, rerender } = render(<DocumentViewer content={unclosedFence} />)
+    expect(container.querySelector('pre code')).toHaveTextContent('const stillReadable = true')
+
+    rerender(<DocumentViewer content={unbalancedTable} />)
+    const rows = container.querySelectorAll('tbody tr')
+    expect(rows).toHaveLength(3)
+    expect(rows[0].querySelectorAll('td')).toHaveLength(3)
+    expect(rows[0].lastElementChild).toBeEmptyDOMElement()
+    expect(screen.getByText('Team')).toBeInTheDocument()
+
+    rerender(<DocumentViewer content={deepMixedLists} />)
+    expect(screen.getByText('Final ordered item')).toBeInTheDocument()
+    expect(container.querySelectorAll('ol, ul').length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('creates valid unique IDs for duplicate Unicode and emoji headings', () => {
+    render(<DocumentViewer content={unicodeHeadings} />)
+    const duplicateHeadings = screen.getAllByRole('heading', { name: '🚀 Déploiement rapide' })
+
+    expect(duplicateHeadings[0]).toHaveAttribute('id', 'deploiement-rapide')
+    expect(duplicateHeadings[1]).toHaveAttribute('id', 'deploiement-rapide-1')
+    expect(document.getElementById('日本語の設定')).toBeInTheDocument()
   })
 
   it('handles a large technical document', () => {
