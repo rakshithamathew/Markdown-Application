@@ -3,11 +3,13 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import TableOfContents from './TableOfContents.jsx'
 import CodeBlock from './CodeBlock.jsx'
+import TaskCheckbox from './TaskCheckbox.jsx'
 import { buildHeadingTree, extractHeadings, remarkHeadingIds } from '../utils/headings.js'
 
 const remarkPlugins = [remarkGfm, remarkHeadingIds]
 const markdownComponents = {
   pre: CodeBlock,
+  input: TaskCheckbox,
   a: ({ children, node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a>,
 }
 

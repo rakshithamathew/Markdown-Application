@@ -40,6 +40,24 @@ describe('DocumentViewer', () => {
     expect(await screen.findByRole('button', { name: 'Code copied' })).toBeInTheDocument()
   })
 
+  it('allows GFM task-list checkboxes to be toggled locally', () => {
+    render(<DocumentViewer content={'# Tasks\n\n- [ ] Pending task\n- [x] Completed task'} />)
+    const pending = screen.getByRole('checkbox', { name: 'Mark task complete' })
+    const completed = screen.getByRole('checkbox', { name: 'Mark task incomplete' })
+
+    expect(pending).not.toBeChecked()
+    expect(completed).toBeChecked()
+    expect(pending).toBeEnabled()
+
+    fireEvent.click(pending)
+    expect(pending).toBeChecked()
+    expect(pending).toHaveAccessibleName('Mark task incomplete')
+
+    fireEvent.click(completed)
+    expect(completed).not.toBeChecked()
+    expect(completed).toHaveAccessibleName('Mark task complete')
+  })
+
   it('loads an uncommon syntax grammar only when its code block is rendered', async () => {
     const { container } = render(<DocumentViewer content={'```ruby\ndef greet\n  puts "hello"\nend\n```'} />)
 

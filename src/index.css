@@ -217,7 +217,7 @@ button:focus-visible, .drop-zone:focus-within { outline: 2px solid #6258ee; outl
 .markdown-body li > ul, .markdown-body li > ol { margin-top: 4px; margin-bottom: 0; }
 .markdown-body .contains-task-list { padding-left: 0; list-style: none; }
 .markdown-body .task-list-item { display: flex; align-items: baseline; gap: 8px; }
-.markdown-body input[type="checkbox"] { width: 13px; height: 13px; accent-color: #6258ee; transform: translateY(2px); }
+.markdown-body input[type="checkbox"] { width: 13px; height: 13px; accent-color: #6258ee; cursor: pointer; transform: translateY(2px); }
 .markdown-body blockquote { margin: 19px 0; border-left: 3px solid #6258ee; background: #fafaff; padding: 11px 14px; color: #626977; }
 .markdown-body blockquote p:last-child { margin-bottom: 0; }
 .markdown-body hr { margin: 25px 0; border: 0; border-top: 1px solid #e5e6ea; }
